@@ -1,5 +1,11 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
+import * as csv from "csv-stringify";
+import * as fs from "fs";
+
+var allMovies = [
+    ['Title', 'VOD', 'rating']
+]
 
 async function extractMovie(streamingPlatformUrl, platformName) {
   const response = await axios.get(streamingPlatformUrl);
@@ -9,29 +15,48 @@ async function extractMovie(streamingPlatformUrl, platformName) {
   const $ = cheerio.load(html);
 
   // Select all the elements with the class name "athing"
-//   const movies = $(".rankingType__card");
+  //   const movies = $(".rankingType__card");
   const movies = [...$(".rankingType__card")].map((e) => {
     return {
       title: $(e).find(".rankingType__title").text().trim(),
       rating: $(e).find(".rankingType__rate--value").text().trim(),
-      platform: platformName
+      platform: platformName,
     };
   });
 
+
+  let maxLimit = movies.length > 10 ? 10 : movies.length
+  console.log(platformName + " " + maxLimit)
   // Loop through the selected elements
-  for (let index = 0; index < 10; index++) {
+  for (let index = 0; index < maxLimit; index++) {
     const movie = movies[index];
-    const title = movie.title
-    const rating = movie.rating
+    const title = movie.title;
+    const rating = movie.rating;
     // Log each article's text content to the console
-    console.log(index+1 +" "+platformName + " " + title + " " + rating);
+    console.log(index + 1 + " " + platformName + " " + title + " " + rating);
+    allMovies.push([title, platformName, rating])
   }
 }
 
 await extractMovie(
-  "https://www.filmweb.pl/ranking/vod/netflix/film/",
+  "https://www.filmweb.pl/ranking/vod/netflix/film/2023",
   "NETFLIX"
 );
-// await extractMovie("https://www.filmweb.pl/ranking/vod/hbo_max/film","HBO");
-// await extractMovie("https://www.filmweb.pl/ranking/vod/disney/film","DISNEY");
-// await extractMovie("https://www.filmweb.pl/ranking/vod/canal_plus_manual/film","CANAL PLUS");
+await extractMovie(
+  "https://www.filmweb.pl/ranking/vod/hbo_max/film/2023",
+  "HBO"
+);
+await extractMovie(
+  "https://www.filmweb.pl/ranking/vod/disney/film/2023",
+  "DISNEY"
+);
+await extractMovie(
+  "https://www.filmweb.pl/ranking/vod/canal_plus_manual/film/2023",
+  "CANAL PLUS"
+);
+
+console.log(allMovies)
+csv.stringify(
+    allMovies,
+  (e, o) => fs.writeFileSync("result.csv", o)
+);
