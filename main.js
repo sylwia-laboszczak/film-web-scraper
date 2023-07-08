@@ -3,9 +3,7 @@ import * as cheerio from "cheerio";
 import * as csv from "csv-stringify";
 import * as fs from "fs";
 
-var allMovies = [
-    ['Title', 'VOD', 'rating']
-]
+var allMovies = [];
 
 async function extractMovie(streamingPlatformUrl, platformName) {
   const response = await axios.get(streamingPlatformUrl);
@@ -15,26 +13,29 @@ async function extractMovie(streamingPlatformUrl, platformName) {
   const $ = cheerio.load(html);
 
   // Select all the elements with the class name "athing"
-  //   const movies = $(".rankingType__card");
   const movies = [...$(".rankingType__card")].map((e) => {
     return {
       title: $(e).find(".rankingType__title").text().trim(),
-      rating: $(e).find(".rankingType__rate--value").text().trim(),
+      rating: $(e)
+        .find(".rankingType__rate--value")
+        .text()
+        .trim()
+        .replace('"', "")
+        .replace(',', "."),
       platform: platformName,
     };
   });
 
-
-  let maxLimit = movies.length > 10 ? 10 : movies.length
-  console.log(platformName + " " + maxLimit)
+  let maxLimit = movies.length > 10 ? 10 : movies.length;
+  console.log(platformName + " " + maxLimit);
   // Loop through the selected elements
   for (let index = 0; index < maxLimit; index++) {
     const movie = movies[index];
     const title = movie.title;
     const rating = movie.rating;
     // Log each article's text content to the console
-    console.log(index + 1 + " " + platformName + " " + title + " " + rating);
-    allMovies.push([title, platformName, rating])
+    // console.log(index + 1 + " " + platformName + " " + title + " " + rating);
+    allMovies.push([title, platformName, parseFloat(rating)]);
   }
 }
 
@@ -55,8 +56,6 @@ await extractMovie(
   "CANAL PLUS"
 );
 
-console.log(allMovies)
-csv.stringify(
-    allMovies,
-  (e, o) => fs.writeFileSync("result.csv", o)
-);
+allMovies.sort((a, b) => b[2] - a[2]);
+allMovies.unshift(["Title", "VOD", "rating"]);
+csv.stringify(allMovies, (e, o) => fs.writeFileSync("result.csv", o));
