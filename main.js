@@ -4,87 +4,64 @@ import * as csv from "csv-stringify";
 import * as fs from "fs";
 import _ from "lodash";
 
-function extractMovie(streamingPlatformUrl, platformName) {
+function extractMovie(platformName) {
+  const currentYear = 2023;
+  const streamingPlatformUrl = `https://www.filmweb.pl/ranking/vod/${platformName}/film/${currentYear}`;
   return axios.get(streamingPlatformUrl).then((response) => {
     const html = response.data;
-
-    // Use Cheerio to parse the HTML
     const $ = cheerio.load(html);
-
-    // Select all the elements with the class name "athing"
     const movies = [...$(".rankingType__card")].map((e) => {
+      const extractedTitle = $(e).find(".rankingType__title").text().trim();
+      const extractedRating = $(e)
+        .find(".rankingType__rate--value")
+        .text()
+        .trim()
+        .replace(",", ".");
       return {
-        title: $(e).find(".rankingType__title").text().trim(),
-        rating: $(e)
-          .find(".rankingType__rate--value")
-          .text()
-          .trim()
-          .replace(",", "."),
+        title: extractedTitle,
+        rating: parseFloat(extractedRating),
         platform: platformName,
       };
     });
 
     let maxLimit = movies.length > 10 ? 10 : movies.length;
-    let platformSpecificMovies = [];
-    for (let index = 0; index < maxLimit; index++) {
-      const movie = movies[index];
-      const title = movie.title;
-      const rating = movie.rating;
-      platformSpecificMovies.push({
-        title: title,
-        platform: platformName,
-        rating: parseFloat(rating),
-      });
-    }
-    return platformSpecificMovies;
+    return movies.slice(0, maxLimit);
   });
 }
 
-const netflixPromise = extractMovie(
-  "https://www.filmweb.pl/ranking/vod/netflix/film/2023",
-  "netflix"
-);
-const hboPromise = extractMovie(
-  "https://www.filmweb.pl/ranking/vod/hbo_max/film/2023",
-  "hbo_max"
-);
-const disneyPromise = extractMovie(
-  "https://www.filmweb.pl/ranking/vod/disney/film/2023",
-  "disney"
-);
-const canalPlusPromise = extractMovie(
-  "https://www.filmweb.pl/ranking/vod/canal_plus_manual/film/2023",
-  "canal_plus_manual"
-);
+const netflixPromise = extractMovie("netflix");
+const hboPromise = extractMovie("hbo_max");
+const disneyPromise = extractMovie("disney");
+const canalPlusPromise = extractMovie("canal_plus_manual");
 
 let allPromises = [netflixPromise, hboPromise, disneyPromise, canalPlusPromise];
 
-
-
 const deduplicateAndSortByRating = (movies) => {
-    const result = [];
-    const moviesGroupByTitle = _.groupBy(movies, "title");
-    _.each(moviesGroupByTitle, (value, key) => {
-      let movieWithHighestRating;
-      if (value.length > 1) {
-        movieWithHighestRating = _.maxBy(value, "rating");
-      } else {
-        movieWithHighestRating = value[0];
-      }
-      result.push([
-        movieWithHighestRating.title,
-        movieWithHighestRating.platform,
-        movieWithHighestRating.rating,
-      ]);
-    });
+  const sortedMovies = [];
+  const moviesGroupByTitle = _.groupBy(movies, "title");
+  _.each(moviesGroupByTitle, (value, key) => {
+    let movieWithHighestRating;
+    if (value.length > 1) {
+      movieWithHighestRating = _.maxBy(value, "rating");
+    } else {
+      movieWithHighestRating = value[0];
+    }
+    sortedMovies.push([
+      movieWithHighestRating.title,
+      movieWithHighestRating.platform,
+      movieWithHighestRating.rating,
+    ]);
+  });
 
-    result.sort((a, b) => b[2] - a[2]);
-    return result;
-  };
-  
+  sortedMovies.sort((a, b) => b[2] - a[2]);
+  return sortedMovies;
+};
+
 Promise.all(allPromises).then((res) => {
   let allMovies = [...res[0], ...res[1], ...res[2], ...res[3]];
   let deduplicatedMovies = deduplicateAndSortByRating(allMovies);
   deduplicatedMovies.unshift(["Title", "VOD", "rating"]);
-  csv.stringify(deduplicatedMovies, (e, o) => fs.writeFileSync("result.csv", o));
+  csv.stringify(deduplicatedMovies, (e, o) =>
+    fs.writeFileSync("result.csv", o)
+  );
 });
