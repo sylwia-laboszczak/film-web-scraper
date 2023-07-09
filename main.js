@@ -29,7 +29,7 @@ const extractMovie = (platformName) => {
   });
 };
 
-const deduplicateAndSortByRating = (movies) => {
+export function deduplicateAndSortByRating (movies) {
   const sortedMovies = [];
   const moviesGroupedByTitle = _.groupBy(movies, "title");
   _.each(moviesGroupedByTitle, (value, key) => {
@@ -56,7 +56,6 @@ const deduplicateAndSortByRating = (movies) => {
       sortedMovies.push(singleMovieAsArray);
     }
   });
-
   return sortedMovies;
 };
 
@@ -68,6 +67,7 @@ let allPromises = [netflixPromise, hboPromise, disneyPromise, canalPlusPromise];
 
 Promise.all(allPromises).then((res) => {
   let allMovies = [...res[0], ...res[1], ...res[2], ...res[3]];
+
   let deduplicatedAndSortedMovies = deduplicateAndSortByRating(allMovies);
   const result = [["Title", "VOD", "rating"], ...deduplicatedAndSortedMovies];
   csv.stringify(result, (e, o) => fs.writeFileSync("result.csv", o));
