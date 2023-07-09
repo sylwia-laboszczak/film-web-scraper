@@ -33,20 +33,32 @@ const deduplicateAndSortByRating = (movies) => {
   const sortedMovies = [];
   const moviesGroupByTitle = _.groupBy(movies, "title");
   _.each(moviesGroupByTitle, (value, key) => {
-    let movieWithHighestRating;
+    let hghestRatingMovie;
+
     if (value.length > 1) {
-      movieWithHighestRating = _.maxBy(value, "rating");
+      hghestRatingMovie = _.maxBy(value, "rating");
     } else {
-      movieWithHighestRating = value[0];
+      hghestRatingMovie = value[0];
     }
-    sortedMovies.push([
-      movieWithHighestRating.title,
-      movieWithHighestRating.platform,
-      movieWithHighestRating.rating,
-    ]);
+
+    if (
+      sortedMovies.length > 0 &&
+      hghestRatingMovie.rating > sortedMovies[0][2]
+    ) {
+      sortedMovies.unshift([
+        hghestRatingMovie.title,
+        hghestRatingMovie.platform,
+        hghestRatingMovie.rating,
+      ]);
+    } else {
+      sortedMovies.push([
+        hghestRatingMovie.title,
+        hghestRatingMovie.platform,
+        hghestRatingMovie.rating,
+      ]);
+    }
   });
 
-  sortedMovies.sort((a, b) => b[2] - a[2]);
   return sortedMovies;
 };
 
