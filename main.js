@@ -31,8 +31,8 @@ const extractMovie = (platformName) => {
 
 const deduplicateAndSortByRating = (movies) => {
   const sortedMovies = [];
-  const moviesGroupByTitle = _.groupBy(movies, "title");
-  _.each(moviesGroupByTitle, (value, key) => {
+  const moviesGroupedByTitle = _.groupBy(movies, "title");
+  _.each(moviesGroupedByTitle, (value, key) => {
     let hghestRatingMovie;
 
     if (value.length > 1) {
