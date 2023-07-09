@@ -27,7 +27,7 @@ const extractMovie = (platformName) => {
     let maxLimit = movies.length > 10 ? 10 : movies.length;
     return movies.slice(0, maxLimit);
   });
-}
+};
 
 const deduplicateAndSortByRating = (movies) => {
   const sortedMovies = [];
