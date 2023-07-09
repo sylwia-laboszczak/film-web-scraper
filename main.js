@@ -2,6 +2,7 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import * as csv from "csv-stringify";
 import * as fs from "fs";
+import _ from "lodash";
 
 function extractMovie(streamingPlatformUrl, platformName) {
   return axios.get(streamingPlatformUrl).then((response) => {
@@ -24,18 +25,16 @@ function extractMovie(streamingPlatformUrl, platformName) {
     });
 
     let maxLimit = movies.length > 10 ? 10 : movies.length;
-    // console.log(platformName + " " + maxLimit);
-    // Loop through the selected elements
-
     let platformSpecificMovies = [];
-
     for (let index = 0; index < maxLimit; index++) {
       const movie = movies[index];
       const title = movie.title;
       const rating = movie.rating;
-      // Log each article's text content to the console
-      // console.log(index + 1 + " " + platformName + " " + title + " " + rating);
-      platformSpecificMovies.push([title, platformName, parseFloat(rating)]);
+      platformSpecificMovies.push({
+        title: title,
+        platform: platformName,
+        rating: parseFloat(rating),
+      });
     }
     return platformSpecificMovies;
   });
@@ -60,11 +59,32 @@ const canalPlusPromise = extractMovie(
 
 let allPromises = [netflixPromise, hboPromise, disneyPromise, canalPlusPromise];
 
+
+
+const deduplicateAndSortByRating = (movies) => {
+    const result = [];
+    const moviesGroupByTitle = _.groupBy(movies, "title");
+    _.each(moviesGroupByTitle, (value, key) => {
+      let movieWithHighestRating;
+      if (value.length > 1) {
+        movieWithHighestRating = _.maxBy(value, "rating");
+      } else {
+        movieWithHighestRating = value[0];
+      }
+      result.push([
+        movieWithHighestRating.title,
+        movieWithHighestRating.platform,
+        movieWithHighestRating.rating,
+      ]);
+    });
+
+    result.sort((a, b) => b[2] - a[2]);
+    return result;
+  };
+  
 Promise.all(allPromises).then((res) => {
   let allMovies = [...res[0], ...res[1], ...res[2], ...res[3]];
-  console.log(allMovies);
-
-  allMovies.sort((a, b) => b[2] - a[2]);
-  allMovies.unshift(["Title", "VOD", "rating"]);
-  csv.stringify(allMovies, (e, o) => fs.writeFileSync("result.csv", o));
+  let deduplicatedMovies = deduplicateAndSortByRating(allMovies);
+  deduplicatedMovies.unshift(["Title", "VOD", "rating"]);
+  csv.stringify(deduplicatedMovies, (e, o) => fs.writeFileSync("result.csv", o));
 });
