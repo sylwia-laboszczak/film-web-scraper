@@ -5,7 +5,7 @@ import * as fs from "fs";
 import _ from "lodash";
 
 const extractMovie = (platformName) => {
-  const currentYear = 2023;
+  const currentYear = new Date().getFullYear();
   const streamingPlatformUrl = `https://www.filmweb.pl/ranking/vod/${platformName}/film/${currentYear}`;
   return axios.get(streamingPlatformUrl).then((response) => {
     const html = response.data;
@@ -41,21 +41,19 @@ const deduplicateAndSortByRating = (movies) => {
       hghestRatingMovie = value[0];
     }
 
+    const singleMovieAsArray = [
+      hghestRatingMovie.title,
+      hghestRatingMovie.platform,
+      hghestRatingMovie.rating,
+    ];
+
     if (
       sortedMovies.length > 0 &&
       hghestRatingMovie.rating > sortedMovies[0][2]
     ) {
-      sortedMovies.unshift([
-        hghestRatingMovie.title,
-        hghestRatingMovie.platform,
-        hghestRatingMovie.rating,
-      ]);
+      sortedMovies.unshift(singleMovieAsArray);
     } else {
-      sortedMovies.push([
-        hghestRatingMovie.title,
-        hghestRatingMovie.platform,
-        hghestRatingMovie.rating,
-      ]);
+      sortedMovies.push(singleMovieAsArray);
     }
   });
 
@@ -70,9 +68,7 @@ let allPromises = [netflixPromise, hboPromise, disneyPromise, canalPlusPromise];
 
 Promise.all(allPromises).then((res) => {
   let allMovies = [...res[0], ...res[1], ...res[2], ...res[3]];
-  let deduplicatedMovies = deduplicateAndSortByRating(allMovies);
-  deduplicatedMovies.unshift(["Title", "VOD", "rating"]);
-  csv.stringify(deduplicatedMovies, (e, o) =>
-    fs.writeFileSync("result.csv", o)
-  );
+  let deduplicatedAndSortedMovies = deduplicateAndSortByRating(allMovies);
+  const result = [["Title", "VOD", "rating"], ...deduplicatedAndSortedMovies];
+  csv.stringify(result, (e, o) => fs.writeFileSync("result.csv", o));
 });
